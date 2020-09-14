@@ -8,3 +8,4 @@ spooned/
 .gradle/
 build/
 spooned/
+out/

@@ -1,145 +1,140 @@
 package org.mri;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.kohsuke.args4j.*;
-import org.kohsuke.args4j.spi.StringArrayOptionHandler;
-import org.mri.processors.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import spoon.Launcher;
-import spoon.compiler.ModelBuildingException;
-import spoon.reflect.reference.CtExecutableReference;
-import spoon.reflect.reference.CtTypeReference;
-import spoon.support.QueueProcessingManager;
-import spoon.support.reflect.declaration.CtMethodImpl;
-
-import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.Option;
+import org.kohsuke.args4j.OptionHandlerFilter;
+import org.kohsuke.args4j.ParserProperties;
+import org.kohsuke.args4j.spi.StringArrayOptionHandler;
+import org.mri.processors.AggregatesFinder;
+import org.mri.processors.ClassHierarchyBuilder;
+import org.mri.processors.CommandHandlersFinder;
+import org.mri.processors.EventHandlersFinder;
+import org.mri.processors.MethodExecutionBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import spoon.Launcher;
+import spoon.MavenLauncher;
+import spoon.MavenLauncher.SOURCE_TYPE;
+import spoon.reflect.declaration.CtType;
+import spoon.reflect.reference.CtExecutableReference;
+import spoon.reflect.reference.CtTypeReference;
+import spoon.support.QueueProcessingManager;
+import spoon.support.reflect.declaration.CtExecutableImpl;
+import spoon.support.reflect.declaration.CtMethodImpl;
 
 public class ShowAxonFlow {
-    enum Format {
-        DEFAULT, PLANTUML, DOT;
+
+  enum Format {
+    DEFAULT, PLANTUML, DOT;
+  }
+
+  private static Logger logger = LoggerFactory.getLogger(ShowAxonFlow.class);
+
+  @Option(name = "-s", aliases = "--source-maven-project-folder", metaVar = "MAVEN_PROJECT",
+    usage = "source folder(s) for the maven project",
+    handler = StringArrayOptionHandler.class,
+    required = true)
+  private String mavenProject;
+
+  @Option(name = "-m", aliases = "--method-name", metaVar = "METHOD_NAME",
+    usage = "method name to print call hierarchy",
+    required = true)
+  private String methodName;
+
+//  @Option(name = "-c", aliases = "--command", metaVar = "COMMAND_NAME",
+//    usage = "command name to print call hierarchy")
+//  private String command;
+
+  private PrintStream printStream;
+
+  @Option(name = "-f", aliases = "--format", metaVar = "FORMAT",
+    usage = "format of the output")
+  private Format format = Format.DEFAULT;
+
+//  @Option(name = "--match-events-by-name", metaVar = "MATCH_EVENTS_BY_NAME",
+//    usage = "match events by class name only instead of a full signature")
+//  private boolean matchEventsByName = false;
+
+  public static void main(String[] args) throws Exception {
+    ShowAxonFlow.parse(args).doMain();
+  }
+
+  private static ShowAxonFlow parse(String[] args) {
+//    String[] args1 = new String[]{"-s", "../AxonBank", "-m", "createTransfers"};
+    ShowAxonFlow showAxonFlow = new ShowAxonFlow(System.out);
+    CmdLineParser parser = new CmdLineParser(showAxonFlow, ParserProperties.defaults().withUsageWidth(120));
+    try {
+      parser.parseArgument(args);
+    } catch (CmdLineException e) {
+      System.err.println(e.getMessage());
+      System.err.print("Usage: java -jar <CHP_JAR_PATH>" + parser.printExample(OptionHandlerFilter.REQUIRED));
+      System.err.println();
+      System.err.println();
+      System.err.println("Options:");
+      parser.printUsage(System.err);
+      System.exit(1);
     }
+    return showAxonFlow;
+  }
 
-    private static Logger logger = LoggerFactory.getLogger(ShowAxonFlow.class);
+  public ShowAxonFlow(PrintStream printStream) {
+    this.printStream = printStream;
+  }
 
-    @Option(name="-s", aliases = "--source-folder", metaVar = "SOURCE_FOLDERS",
-            usage="source folder(s) for the analyzed project",
-            handler = StringArrayOptionHandler.class,
-            required = true)
-    private List<String> sourceFolders;
+  public ShowAxonFlow(String mavenProject, String methodName, PrintStream printStream) {
+    this(printStream);
+    this.mavenProject = mavenProject;
+    this.methodName = methodName;
+  }
 
-    @Option(name="-m", aliases = "--method-name", metaVar = "METHOD_NAME",
-            usage="method name to print call hierarchy",
-            required = true)
-    private String methodName;
+  public void doMain() throws Exception {
+    MavenLauncher launcher = new MavenLauncher(mavenProject, SOURCE_TYPE.ALL_SOURCE);
+    launcher.buildModel();
+    printCallHierarchy(launcher, printStream);
+  }
 
-    @Option(name="-c", aliases = "--classpath",  metaVar = "CLASSPATH",
-            usage="classpath for the analyzed project")
-    private String classpath;
+  private void printCallHierarchy(Launcher launcher, PrintStream printStream) throws Exception {
+    QueueProcessingManager queueProcessingManager = new QueueProcessingManager(launcher.getFactory());
+    List<CtType<?>> ctTypeList = launcher.getFactory().Class().getAll();
 
-    @Option(name="--classpath-file", metaVar = "CLASSPATH_FILE", usage="file containing the classpath for the analyzed project",
-            forbids = "--classpath")
-    private File classpathFile;
-    private PrintStream printStream;
+    Map<CtTypeReference, Set<CtTypeReference>> classHierarchy =
+      new ClassHierarchyBuilder().build(ctTypeList, queueProcessingManager);
 
-    @Option(name="-f", aliases = "--format", metaVar = "FORMAT",
-            usage="format of the output")
-    private Format format = Format.DEFAULT;
+    Map<MethodWrapper, List<CtExecutableReference>> callList =
+      new MethodExecutionBuilder().build(ctTypeList, queueProcessingManager);
 
-    @Option(name = "--match-events-by-name", metaVar = "MATCH_EVENTS_BY_NAME",
-            usage="match events by class name only instead of a full signature")
-    private boolean matchEventsByName;
+    final Map<CtTypeReference, List<CtMethodImpl>> eventHandlers =
+      new EventHandlersFinder().all(ctTypeList, queueProcessingManager);
 
-    public static void main(String[] args) throws Exception {
-        ShowAxonFlow.parse(args).doMain();
+    final Map<CtTypeReference, CtExecutableImpl> commandHandlers =
+      new CommandHandlersFinder().all(ctTypeList, queueProcessingManager);
+    List<CtTypeReference> aggregates = new AggregatesFinder().all(ctTypeList, queueProcessingManager);
+
+    ArrayList<CtExecutableReference> methodReferences = MethodCallHierarchyBuilder.forMethodName(methodName, callList, classHierarchy);
+    if (methodReferences.isEmpty()) {
+      printStream.println("No method containing `" + methodName + "` found.");
     }
-
-    private static ShowAxonFlow parse(String[] args) {
-        ShowAxonFlow showAxonFlow = new ShowAxonFlow(System.out);
-        CmdLineParser parser = new CmdLineParser(showAxonFlow, ParserProperties.defaults().withUsageWidth(120));
-        try {
-            parser.parseArgument(args);
-        } catch (CmdLineException e) {
-            System.err.println(e.getMessage());
-            System.err.print("Usage: java -jar <CHP_JAR_PATH>" + parser.printExample(OptionHandlerFilter.REQUIRED));
-            System.err.println();
-            System.err.println();
-            System.err.println("Options:");
-            parser.printUsage(System.err);
-            System.exit(1);
-        }
-        return showAxonFlow;
+    AxonFlowBuilder axonFlowBuilder = new AxonFlowBuilder(classHierarchy, callList, eventHandlers, commandHandlers, aggregates, false);
+    List<AxonNode> axonNodes = axonFlowBuilder.buildFlow(methodReferences);
+    for (AxonNode axonNode : axonNodes) {
+      switch (format) {
+        case PLANTUML:
+          axonNode.printPlantUML(printStream);
+          break;
+        case DOT:
+          axonNode.printDot(printStream);
+          break;
+        default:
+          axonNode.print(printStream);
+          break;
+      }
     }
-
-    public ShowAxonFlow(PrintStream printStream) {
-        this.printStream = printStream;
-    }
-
-    public ShowAxonFlow(String classpath, List<String> sourceFolders, String methodName, PrintStream printStream) {
-        this(printStream);
-        this.sourceFolders = sourceFolders;
-        this.methodName = methodName;
-        this.classpath = classpath;
-    }
-
-    public void doMain() throws Exception {
-        Launcher launcher = new Launcher();
-        if (classpath != null) {
-            launcher.setArgs(new String[] { "--source-classpath", classpath});
-        }
-        if (classpathFile != null) {
-            launcher.setArgs(new String[] { "--source-classpath", StringUtils.strip(FileUtils.readFileToString(classpathFile), "\n\r\t ")});
-        }
-        for (String sourceFolder : sourceFolders) {
-            launcher.addInputResource(sourceFolder);
-        }
-        try {
-            launcher.run();
-        } catch (ModelBuildingException e) {
-            throw new RuntimeException("You most likely have not specified your classpath. Pass it in using either '--claspath' or '--classpath-file'.", e);
-        }
-
-        printCallHierarchy(launcher, printStream);
-    }
-
-    private void printCallHierarchy(Launcher launcher, PrintStream printStream) throws Exception {
-        QueueProcessingManager queueProcessingManager = new QueueProcessingManager(launcher.getFactory());
-        Map<CtTypeReference, Set<CtTypeReference>> classHierarchy =
-                new ClassHierarchyBuilder().build(queueProcessingManager);
-        Map<MethodWrapper, List<CtExecutableReference>> callList =
-                new MethodExecutionBuilder().build(queueProcessingManager);
-        final Map<CtTypeReference, List<CtMethodImpl>> eventHandlers =
-                new EventHandlersFinder()
-                        .all(queueProcessingManager);
-        final Map<CtTypeReference, CtMethodImpl> commandHandlers =
-                new CommandHandlersFinder().all(queueProcessingManager);
-        List<CtTypeReference> aggregates = new AggregatesFinder().all(queueProcessingManager);
-
-        ArrayList<CtExecutableReference> methodReferences = MethodCallHierarchyBuilder.forMethodName(methodName, callList, classHierarchy);
-        if (methodReferences.isEmpty()) {
-            printStream.println("No method containing `" + methodName + "` found.");
-        }
-        AxonFlowBuilder axonFlowBuilder = new AxonFlowBuilder(classHierarchy, callList, eventHandlers, commandHandlers, aggregates, matchEventsByName);
-        List<AxonNode> axonNodes = axonFlowBuilder.buildFlow(methodReferences);
-        for (AxonNode axonNode : axonNodes) {
-            switch (format) {
-                case PLANTUML:
-                    axonNode.printPlantUML(printStream);
-                    break;
-                case DOT:
-                    axonNode.printDot(printStream);
-                    break;
-                default:
-                    axonNode.print(printStream);
-                    break;
-            }
-        }
-    }
+  }
 
 }

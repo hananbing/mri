@@ -1,7 +1,8 @@
 Axon MRI - Flow visualization tool
 ==================================
 
-MRI /ˌɛm ɑr ˈaɪ/ helps you visualize flow of the code when using Axon Framework.
+MRI helps you visualize flow of the code when using Axon Framework.
+Upgrade spoon-core version.
 
 Installation
 ------------
@@ -11,93 +12,97 @@ Installation
 Usage
 -----
 
-1. Before executing this tool you need to have generated the classpath for your project.
+1. Before executing this tool you need to have maven project.
 
-	For Maven run:
+To print the Axon flow:
 
-		$ mvn dependency:build-classpath | grep -v "^\[.*\].*" | tr ':' '\n' | sort | uniq | tr '\n' ':' > this.classpath
+		java -jar build/libs/org.mri-VERSION.jar -m (--method-name) METHOD_NAME -s (--source-maven-project-folder) MAVEN_PROJECT
 
-	For Gradle add this to build.gradle:
-
-		task showClasspath << {
-    		it.println sourceSets.main.runtimeClasspath.collect { it.absolutePath }.join(':')
-    	}
-
-	and run
-
-		$ gradle -q showClasspath > this.classpath
-
-2. To print the Axon flow:
-
-		java -jar build/libs/org.mri-VERSION.jar -m (--method-name) METHOD_NAME -s (--source-folder) SOURCE_FOLDERS --classpath-file CLASSPATH_FILE
-    
-		--classpath-file CLASSPATH_FILE     : file containing the classpath for the analyzed project
-		-c (--classpath) CLASSPATH          : classpath for the analyzed project
-        -f (--format) [DEFAULT | PLANTUML] : format of the output
+    -s (--source-folder) SOURCE_FOLDERS : source folder(s) for the analyzed maven project
 		-m (--method-name) METHOD_NAME      : method name (can be a regexp) to print axon flow for
-		-s (--source-folder) SOURCE_FOLDERS : source folder(s) for the analyzed project
+		-f (--format) [DEFAULT | PLANTUML]  : format of the output
 		
 Example
 -------
 
 Execute following from this project root directory:
 
-	$ git clone https://github.com/AxonFramework/Axon-trader ../Axon-trader
-	$ mvn -f ../Axon-trader/pom.xml dependency:build-classpath | grep -v "^\[.*\].*" | tr '\n' ':' > ../Axon-trader/this.classpath
-	$ java -jar build/libs/org.mri-*.jar --classpath-file "../Axon-trader/this.classpath" -s ../Axon-trader -m createuser
+	$ git clone https://github.com/hananbing/AxonBank.git ../AxonBank
+	$ git checkout no-lombok
+	$ java -jar build/libs/org.mri-*.jar -s ../AxonBank -m createTransfers -f plantuml
 
 Output:
 
-	org.axonframework.samples.trader.webui.init.BaseDBInit.createuser(java.lang.String, java.lang.String)
-        -> org.axonframework.samples.trader.api.users.CreateUserCommand.CreateUserCommand(org.axonframework.samples.trader.api.users.UserId, java.lang.String, java.lang.String, java.lang.String)
-        -- [handler] --
-          -> org.axonframework.samples.trader.users.command.UserCommandHandler.handleCreateUser(org.axonframework.samples.trader.api.users.CreateUserCommand)
-                -> org.axonframework.samples.trader.api.users.UserCreatedEvent.UserCreatedEvent(org.axonframework.samples.trader.api.users.UserId, java.lang.String, java.lang.String, java.lang.String)
-                -- [listeners] --
-                  -> org.axonframework.samples.trader.orders.command.PortfolioManagementUserListener.createNewPortfolioWhenUserIsCreated(org.axonframework.samples.trader.api.users.UserCreatedEvent)
-                        -> org.axonframework.samples.trader.api.portfolio.CreatePortfolioCommand.CreatePortfolioCommand(org.axonframework.samples.trader.api.orders.trades.PortfolioId, org.axonframework.samples.trader.api.users.UserId)
-                        -- [handler] --
-                          -> org.axonframework.samples.trader.orders.command.PortfolioCommandHandler.handleCreatePortfolio(org.axonframework.samples.trader.api.portfolio.CreatePortfolioCommand)
+```
+	@startuml create-transfers-flow.png
+  participant "org.axonframework.samples.bank.api.banktransfer\n**CreateBankTransferCommand**" as CreateBankTransferCommand
+  participant "org.axonframework.samples.bank.command\n**BankTransfer**" as BankTransfer
+  participant "org.axonframework.samples.bank.api.banktransfer\n**BankTransferCreatedEvent**" as BankTransferCreatedEvent
+  participant "org.axonframework.samples.bank.command\n**BankTransferManagementSaga**" as BankTransferManagementSaga
+  participant "org.axonframework.samples.bank.api.bankaccount\n**DebitSourceBankAccountCommand**" as DebitSourceBankAccountCommand
+  participant "org.axonframework.samples.bank.command\n**BankAccountCommandHandler**" as BankAccountCommandHandler
+  participant "org.axonframework.samples.bank.command\n**BankAccount**" as BankAccount
+  participant "org.axonframework.samples.bank.api.bankaccount\n**SourceBankAccountDebitedEvent**" as SourceBankAccountDebitedEvent
+  participant "org.axonframework.samples.bank.api.bankaccount\n**CreditDestinationBankAccountCommand**" as CreditDestinationBankAccountCommand
+  participant "org.axonframework.samples.bank.api.bankaccount\n**DestinationBankAccountCreditedEvent**" as DestinationBankAccountCreditedEvent
+  participant "org.axonframework.samples.bank.api.banktransfer\n**MarkBankTransferCompletedCommand**" as MarkBankTransferCompletedCommand
+  participant "org.axonframework.samples.bank.api.banktransfer\n**BankTransferCompletedEvent**" as BankTransferCompletedEvent
+  participant "org.axonframework.samples.bank.query.banktransfer\n**BankTransferEventListener**" as BankTransferEventListener
+  participant "org.axonframework.samples.bank.api.bankaccount\n**MoneyAddedEvent**" as MoneyAddedEvent
+  participant "org.axonframework.samples.bank.query.bankaccount\n**BankAccountEventListener**" as BankAccountEventListener
+  participant "org.axonframework.samples.bank.api.bankaccount\n**MoneySubtractedEvent**" as MoneySubtractedEvent
+  participant "org.axonframework.samples.bank.api.bankaccount\n**SourceBankAccountDebitRejectedEvent**" as SourceBankAccountDebitRejectedEvent
+  participant "org.axonframework.samples.bank.api.banktransfer\n**MarkBankTransferFailedCommand**" as MarkBankTransferFailedCommand
+  participant "org.axonframework.samples.bank.api.banktransfer\n**BankTransferFailedEvent**" as BankTransferFailedEvent
 
-                  -> org.axonframework.samples.trader.query.users.UserListener.handleUserCreated(org.axonframework.samples.trader.api.users.UserCreatedEvent)
-
-                  -> org.axonframework.samples.trader.users.command.User.onUserCreated(org.axonframework.samples.trader.api.users.UserCreatedEvent)
-
-Plant UML support
--------
-
-Use '-f (-format)' option to visualize your flow using sequence diagram in Plant UML format.
-
-Run:
-
-	$ java -jar build/libs/org.mri-*.jar --classpath-file "../Axon-trader/this.classpath" -s ../Axon-trader/ -m createuser -f plantuml
-
-Text Output:
-
-	@startuml
-	BaseDBInit -> CreateUserCommand: create
-	CreateUserCommand --> UserCommandHandler: handleCreateUser
-	UserCommandHandler -> UserCreatedEvent: create
-	UserCreatedEvent --> PortfolioManagementUserListener: createNewPortfolioWhenUserIsCreated
-	PortfolioManagementUserListener -> CreatePortfolioCommand: create
-	CreatePortfolioCommand --> PortfolioCommandHandler: handleCreatePortfolio
-	PortfolioCommandHandler -> PortfolioCreatedEvent: create
-	PortfolioCreatedEvent --> Portfolio: onPortfolioCreated
-	PortfolioCreatedEvent --> PortfolioMoneyEventListener: handleEvent
-	UserCreatedEvent --> UserListener: handleUserCreated
-	UserCreatedEvent --> User: onUserCreated
-	@enduml
+  BankTransferController -> CreateBankTransferCommand: create
+  CreateBankTransferCommand --> BankTransfer: <init>
+  BankTransfer -> BankTransfer: create
+  BankTransfer -> BankTransferCreatedEvent: <init>
+  BankTransferCreatedEvent --> BankTransfer: on
+  BankTransferCreatedEvent --> BankTransferManagementSaga: on
+  BankTransferManagementSaga -> DebitSourceBankAccountCommand: create
+  DebitSourceBankAccountCommand --> BankAccountCommandHandler: handle
+  BankAccountCommandHandler -> BankAccount: create
+  BankAccount -> SourceBankAccountDebitedEvent: <init>
+  SourceBankAccountDebitedEvent --> BankTransferManagementSaga: on
+  BankTransferManagementSaga -> CreditDestinationBankAccountCommand: create
+  CreditDestinationBankAccountCommand --> BankAccountCommandHandler: handle
+  BankAccount -> DestinationBankAccountCreditedEvent: <init>
+  DestinationBankAccountCreditedEvent --> BankTransferManagementSaga: on
+  BankTransferManagementSaga -> MarkBankTransferCompletedCommand: create
+  MarkBankTransferCompletedCommand --> BankTransfer: handle
+  BankTransfer -> BankTransferCompletedEvent: <init>
+  BankTransferCompletedEvent --> BankTransfer: on
+  BankTransferCompletedEvent --> BankTransferEventListener: on
+  BankAccount -> MoneyAddedEvent: <init>
+  MoneyAddedEvent --> BankAccount: on
+  MoneyAddedEvent --> BankAccountEventListener: on
+  BankAccount -> MoneySubtractedEvent: <init>
+  MoneySubtractedEvent --> BankAccount: on
+  MoneySubtractedEvent --> BankAccountEventListener: on
+  BankAccount -> SourceBankAccountDebitRejectedEvent: <init>
+  SourceBankAccountDebitRejectedEvent --> BankTransferManagementSaga: on
+  BankTransferManagementSaga -> MarkBankTransferFailedCommand: create
+  MarkBankTransferFailedCommand --> BankTransfer: handle
+  BankTransfer -> BankTransferFailedEvent: <init>
+  BankTransferFailedEvent --> BankTransfer: on
+  BankTransferFailedEvent --> BankTransferEventListener: on
+  BankTransferCreatedEvent --> BankTransferEventListener: on
+  @enduml
+```
 	
-Run (requires plantuml as shell command):
+Run (requires [plantuml](https://plantuml.com/zh/download) as shell command):
 
-	$ java -jar build/libs/org.mri-*.jar --classpath-file "../Axon-trader/this.classpath" -s ../Axon-trader/ -m createuser -f plantuml | plantuml -tpng -pipe > output.png
+	$ java -jar build/libs/org.mri-*.jar -s ../AxonBank/ -m createTransfers -f plantuml | plantuml -tpng -pipe > output.png
 
 Image output:
 
-![Example Axon flow as Plant UML sequence diagram](example-puml.png)
+![Example Axon flow as Plant UML sequence diagram](./create-transfers-flow.png)
 
 Contributors
 -------
 
 @pbadenski
 @jweissman
+@hananbing

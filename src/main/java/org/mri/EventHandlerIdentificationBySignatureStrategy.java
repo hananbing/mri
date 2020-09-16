@@ -27,12 +27,7 @@ public class EventHandlerIdentificationBySignatureStrategy implements EventHandl
     }
 
     private Predicate<MethodCall> matchEventsBySignaturePredicate() {
-        return new Predicate<MethodCall>() {
-            @Override
-            public boolean apply(final MethodCall input) {
-                return eventHandlers.keySet().contains(input.reference().getDeclaringType());
-            }
-        };
+        return input -> eventHandlers.keySet().contains(input.reference().getDeclaringType());
     }
 
 }

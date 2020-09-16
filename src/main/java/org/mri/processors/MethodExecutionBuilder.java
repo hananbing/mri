@@ -1,5 +1,10 @@
 package org.mri.processors;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.mri.MethodWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,40 +16,38 @@ import spoon.reflect.visitor.filter.AbstractFilter;
 import spoon.support.QueueProcessingManager;
 import spoon.support.reflect.declaration.CtExecutableImpl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 public class MethodExecutionBuilder {
-    private Map<MethodWrapper, List<CtExecutableReference>> callList = new HashMap<>();
-    private static Logger logger = LoggerFactory.getLogger(MethodExecutionBuilder.class);
 
-    private class Processor extends AbstractProcessor<CtExecutableImpl> {
+  private Map<MethodWrapper, List<CtExecutableReference>> callList = new HashMap<>();
+  private static Logger logger = LoggerFactory.getLogger(MethodExecutionBuilder.class);
+
+  private class Processor extends AbstractProcessor<CtExecutableImpl> {
+
+    @Override
+    public void process(CtExecutableImpl ctMethod) {
+      List<CtElement> elements = ctMethod.getElements(new AbstractFilter<CtElement>(CtElement.class) {
         @Override
-        public void process(CtExecutableImpl ctMethod) {
-            List<CtElement> elements = ctMethod.getElements(new AbstractFilter<CtElement>(CtElement.class) {
-                @Override
-                public boolean matches(CtElement ctElement) {
-                    return ctElement instanceof CtAbstractInvocation;
-                }
-            });
-            List<CtExecutableReference> calls = new ArrayList<>();
-            for (CtElement element : elements) {
-                CtAbstractInvocation invocation = (CtAbstractInvocation) element;
-                calls.add(invocation.getExecutable());
-
-            }
-            callList.put(new MethodWrapper(ctMethod), calls);
+        public boolean matches(CtElement ctElement) {
+          return ctElement instanceof CtAbstractInvocation;
         }
+      });
+      List<CtExecutableReference> calls = new ArrayList<>();
+      for (CtElement element : elements) {
+        CtAbstractInvocation invocation = (CtAbstractInvocation) element;
+        calls.add(invocation.getExecutable());
 
+      }
+      callList.put(new MethodWrapper(ctMethod), calls);
     }
 
-    public Map<MethodWrapper, List<CtExecutableReference>> build(QueueProcessingManager queueProcessingManager) throws Exception {
-        queueProcessingManager.addProcessor(new Processor());
-        queueProcessingManager.process();
-        logger.debug("Method calls: " + callList);
-        return callList;
-    }
+  }
+
+  public Map<MethodWrapper, List<CtExecutableReference>> build(Collection<? extends CtElement> elements,
+    QueueProcessingManager queueProcessingManager) throws Exception {
+    queueProcessingManager.addProcessor(new Processor());
+    queueProcessingManager.process(elements);
+    logger.debug("Method calls: " + callList);
+    return callList;
+  }
 }
 

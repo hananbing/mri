@@ -2,6 +2,10 @@ Axon MRI - Flow visualization tool
 ==================================
 
 MRI helps you visualize flow of the code when using Axon Framework.
+
+Upgrade
+------------
+
 Upgrade spoon-core version.
 
 Installation

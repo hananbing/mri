@@ -20,11 +20,11 @@ Usage
 
 To print the Axon flow:
 
-		java -jar build/libs/org.mri-VERSION.jar -m (--method-name) METHOD_NAME -s (--source-maven-project-folder) MAVEN_PROJECT
+		java -jar build/libs/org.mri-VERSION.jar -s (--source-maven-project-folder) MAVEN_PROJECT -m (--method-name) METHOD_NAME -f (--format) [DEFAULT | PLANTUML]
 
     -s (--source-folder) SOURCE_FOLDERS : source folder(s) for the analyzed maven project
-		-m (--method-name) METHOD_NAME      : method name (can be a regexp) to print axon flow for
-		-f (--format) [DEFAULT | PLANTUML]  : format of the output
+    -m (--method-name) METHOD_NAME      : method name (can be a regexp) to print axon flow for
+    -f (--format) [DEFAULT | PLANTUML]  : format of the output
 		
 Example
 -------

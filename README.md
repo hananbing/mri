@@ -6,7 +6,8 @@ MRI helps you visualize flow of the code when using Axon Framework.
 Upgrade
 ------------
 
-Upgrade spoon-core version.
+1. Upgrade spoon-core version.
+2. Fix bugs.
 
 Installation
 ------------
@@ -95,12 +96,14 @@ Output:
   BankTransferCreatedEvent --> BankTransferEventListener: on
   @enduml
 ```
-	
-Run (requires [plantuml](https://plantuml.com/zh/download) as shell command):
 
-	$ java -jar build/libs/org.mri-*.jar -s ../AxonBank/ -m createTransfers -f plantuml | plantuml -tpng -pipe > output.png
 
 Image output:
+-------
+
+Run (requires download [plantuml](https://plantuml.com/zh/download) jar as shell command):
+
+	$ java -DPLANTUML_LIMIT_SIZE=8192 -jar plantuml.1.2020.16.jar -charset UTF-8 ./mri/ddd.puml
 
 ![Example Axon flow as Plant UML sequence diagram](./create-transfers-flow.png)
 

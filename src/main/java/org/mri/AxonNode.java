@@ -77,7 +77,7 @@ public class AxonNode {
       return;
     }
 
-    printStream.println("@startuml " + LOWER_CAMEL.to(LOWER_HYPHEN, reference.getSimpleName()) + "-flow.png");
+    printStream.println("@startuml " + LOWER_CAMEL.to(LOWER_HYPHEN, this.reference.getSimpleName()) + "-flow.png");
     List<String> participants = Lists.newArrayList();
     descendants(participants);
     participants.forEach(printStream::println);
@@ -91,12 +91,12 @@ public class AxonNode {
   }
 
   private void descendants(List<String> all) {
-    if (children.isEmpty() || children.size() == 0) {
+    if (this.children.isEmpty() || this.children.size() == 0) {
       return;
     }
-    for (AxonNode child : children) {
-      String context = "participant \"" + prettyActorName(child.reference) + "\" as " + actorName(child.reference);
-//      String context = "participant " + actorName(child.reference);
+    for (AxonNode child : this.children) {
+//      String context = "participant \"" + prettyActorName(child.reference) + "\" as " + getActorName(child.reference);
+      String context = "participant " + getActorName(this.reference);
       if (!all.contains(context)) {
         all.add(context);
       }
@@ -109,11 +109,11 @@ public class AxonNode {
       return;
     }
     for (AxonNode child : children) {
-      String context = actorName(this.reference())
+      String context = getActorName(this.reference())
         + " "
         + transition()
         + " "
-        + actorName(child.reference())
+        + getActorName(child.reference())
         + ": "
         + methodName(child);
       if (!componentNames.contains(context)) {
@@ -131,7 +131,7 @@ public class AxonNode {
     return reference.getDeclaringType().getPackage().getSimpleName() + "\\n" + "**" + reference.getDeclaringType().getSimpleName() + "**";
   }
 
-  private String actorName(CtExecutableReference reference) {
+  private String getActorName(CtExecutableReference reference) {
 //        return reference.getDeclaringType().getPackage().getSimpleName() + "." + reference.getDeclaringType().getSimpleName();
     return reference.getDeclaringType().getSimpleName();
   }

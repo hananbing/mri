@@ -3,10 +3,11 @@ package org.mri;
 import static com.google.common.base.CaseFormat.LOWER_CAMEL;
 import static com.google.common.base.CaseFormat.LOWER_HYPHEN;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import spoon.reflect.reference.CtExecutableReference;
 
 public class AxonNode {
@@ -78,33 +79,31 @@ public class AxonNode {
     }
 
     printStream.println("@startuml " + LOWER_CAMEL.to(LOWER_HYPHEN, this.reference.getSimpleName()) + "-flow.png");
-    List<String> participants = Lists.newArrayList();
+    Set<String> participants = Sets.newLinkedHashSet();
     descendants(participants);
     participants.forEach(printStream::println);
 
     printStream.println();
-    List<String> componentNames = Lists.newArrayList();
+    Set<String> componentNames = Sets.newLinkedHashSet();
     buildPlantUMLComponent(componentNames);
 
     componentNames.forEach(printStream::println);
     printStream.println("@enduml");
   }
 
-  private void descendants(List<String> all) {
+  private void descendants(Set<String> participants) {
     if (this.children.isEmpty() || this.children.size() == 0) {
       return;
     }
     for (AxonNode child : this.children) {
 //      String context = "participant \"" + prettyActorName(child.reference) + "\" as " + getActorName(child.reference);
       String context = "participant " + getActorName(this.reference);
-      if (!all.contains(context)) {
-        all.add(context);
-      }
-      child.descendants(all);
+      participants.add(context);
+      child.descendants(participants);
     }
   }
 
-  private void buildPlantUMLComponent(List<String> componentNames) {
+  private void buildPlantUMLComponent(Set<String> componentNames) {
     if (children.isEmpty() || children.size() == 0) {
       return;
     }
@@ -116,9 +115,7 @@ public class AxonNode {
         + getActorName(child.reference())
         + ": "
         + methodName(child);
-      if (!componentNames.contains(context)) {
-        componentNames.add(context);
-      }
+      componentNames.add(context);
       child.buildPlantUMLComponent(componentNames);
     }
   }

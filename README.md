@@ -29,7 +29,7 @@ To print the Axon flow:
 Example
 -------
 
-Execute following from this project root directory:
+Execute following from this project root directory. Don't use Lombok:
 
 	$ git clone https://github.com/hananbing/AxonBank.git ../AxonBank
 	$ git checkout no-lombok
@@ -39,25 +39,24 @@ Output:
 
 ```
 	@startuml create-transfers-flow.png
-  participant "org.axonframework.samples.bank.api.banktransfer\n**CreateBankTransferCommand**" as CreateBankTransferCommand
-  participant "org.axonframework.samples.bank.command\n**BankTransfer**" as BankTransfer
-  participant "org.axonframework.samples.bank.api.banktransfer\n**BankTransferCreatedEvent**" as BankTransferCreatedEvent
-  participant "org.axonframework.samples.bank.command\n**BankTransferManagementSaga**" as BankTransferManagementSaga
-  participant "org.axonframework.samples.bank.api.bankaccount\n**DebitSourceBankAccountCommand**" as DebitSourceBankAccountCommand
-  participant "org.axonframework.samples.bank.command\n**BankAccountCommandHandler**" as BankAccountCommandHandler
-  participant "org.axonframework.samples.bank.command\n**BankAccount**" as BankAccount
-  participant "org.axonframework.samples.bank.api.bankaccount\n**SourceBankAccountDebitedEvent**" as SourceBankAccountDebitedEvent
-  participant "org.axonframework.samples.bank.api.bankaccount\n**CreditDestinationBankAccountCommand**" as CreditDestinationBankAccountCommand
-  participant "org.axonframework.samples.bank.api.bankaccount\n**DestinationBankAccountCreditedEvent**" as DestinationBankAccountCreditedEvent
-  participant "org.axonframework.samples.bank.api.banktransfer\n**MarkBankTransferCompletedCommand**" as MarkBankTransferCompletedCommand
-  participant "org.axonframework.samples.bank.api.banktransfer\n**BankTransferCompletedEvent**" as BankTransferCompletedEvent
-  participant "org.axonframework.samples.bank.query.banktransfer\n**BankTransferEventListener**" as BankTransferEventListener
-  participant "org.axonframework.samples.bank.api.bankaccount\n**MoneyAddedEvent**" as MoneyAddedEvent
-  participant "org.axonframework.samples.bank.query.bankaccount\n**BankAccountEventListener**" as BankAccountEventListener
-  participant "org.axonframework.samples.bank.api.bankaccount\n**MoneySubtractedEvent**" as MoneySubtractedEvent
-  participant "org.axonframework.samples.bank.api.bankaccount\n**SourceBankAccountDebitRejectedEvent**" as SourceBankAccountDebitRejectedEvent
-  participant "org.axonframework.samples.bank.api.banktransfer\n**MarkBankTransferFailedCommand**" as MarkBankTransferFailedCommand
-  participant "org.axonframework.samples.bank.api.banktransfer\n**BankTransferFailedEvent**" as BankTransferFailedEvent
+  participant BankTransferController
+  participant CreateBankTransferCommand
+  participant BankTransfer
+  participant BankTransferCreatedEvent
+  participant BankTransferManagementSaga
+  participant DebitSourceBankAccountCommand
+  participant BankAccountCommandHandler
+  participant BankAccount
+  participant SourceBankAccountDebitedEvent
+  participant CreditDestinationBankAccountCommand
+  participant DestinationBankAccountCreditedEvent
+  participant MarkBankTransferCompletedCommand
+  participant BankTransferCompletedEvent
+  participant MoneyAddedEvent
+  participant MoneySubtractedEvent
+  participant SourceBankAccountDebitRejectedEvent
+  participant MarkBankTransferFailedCommand
+  participant BankTransferFailedEvent
 
   BankTransferController -> CreateBankTransferCommand: create
   CreateBankTransferCommand --> BankTransfer: <init>

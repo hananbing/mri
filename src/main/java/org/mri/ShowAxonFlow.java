@@ -30,10 +30,6 @@ import spoon.support.reflect.declaration.CtMethodImpl;
 
 public class ShowAxonFlow {
 
-  enum Format {
-    DEFAULT, PLANTUML, DOT;
-  }
-
   private static Logger logger = LoggerFactory.getLogger(ShowAxonFlow.class);
 
   @Option(name = "-s", aliases = "--source-maven-project-folder", metaVar = "MAVEN_PROJECT",
@@ -47,26 +43,13 @@ public class ShowAxonFlow {
     required = true)
   private String methodName;
 
-//  @Option(name = "-c", aliases = "--command", metaVar = "COMMAND_NAME",
-//    usage = "command name to print call hierarchy")
-//  private String command;
-
   private PrintStream printStream;
-
-  @Option(name = "-f", aliases = "--format", metaVar = "FORMAT",
-    usage = "format of the output")
-  private Format format = Format.DEFAULT;
-
-//  @Option(name = "--match-events-by-name", metaVar = "MATCH_EVENTS_BY_NAME",
-//    usage = "match events by class name only instead of a full signature")
-//  private boolean matchEventsByName = false;
 
   public static void main(String[] args) throws Exception {
     ShowAxonFlow.parse(args).doMain();
   }
 
   private static ShowAxonFlow parse(String[] args) {
-//    String[] args1 = new String[]{"-s", "../AxonBank", "-m", "createTransfers"};
     ShowAxonFlow showAxonFlow = new ShowAxonFlow(System.out);
     CmdLineParser parser = new CmdLineParser(showAxonFlow, ParserProperties.defaults().withUsageWidth(120));
     try {
@@ -85,12 +68,6 @@ public class ShowAxonFlow {
 
   public ShowAxonFlow(PrintStream printStream) {
     this.printStream = printStream;
-  }
-
-  public ShowAxonFlow(String mavenProject, String methodName, PrintStream printStream) {
-    this(printStream);
-    this.mavenProject = mavenProject;
-    this.methodName = methodName;
   }
 
   public void doMain() throws Exception {
@@ -123,17 +100,7 @@ public class ShowAxonFlow {
     AxonFlowBuilder axonFlowBuilder = new AxonFlowBuilder(classHierarchy, callList, eventHandlers, commandHandlers, aggregates, false);
     List<AxonNode> axonNodes = axonFlowBuilder.buildFlow(methodReferences);
     for (AxonNode axonNode : axonNodes) {
-      switch (format) {
-        case PLANTUML:
-          axonNode.printPlantUML(printStream);
-          break;
-        case DOT:
-          axonNode.printDot(printStream);
-          break;
-        default:
-          axonNode.print(printStream);
-          break;
-      }
+      axonNode.printPlantUML(printStream);
     }
   }
 
